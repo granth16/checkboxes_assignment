@@ -1,81 +1,102 @@
-import { useState } from 'react';
+import { useState } from "react";
+
+// Recursive component to render checkboxes
+const CheckboxTree = ({ nodes, onNodeChange, checkedState, level = 0 }) => {
+  return (
+    <div style={{ marginLeft: level * 20 }}>
+      {nodes.map((node, index) => (
+        <div key={index}>
+          <input
+            type='checkbox'
+            checked={checkedState[node.label]?.checked || false}
+            onChange={() => onNodeChange(node)}
+          />{" "}
+          {node.label}
+          {node.children && (
+            <CheckboxTree
+              nodes={node.children}
+              onNodeChange={onNodeChange}
+              checkedState={checkedState}
+              level={level + 1}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const Checkbox = ({ response }) => {
-    // Utility function to extract children labels from any parent
-    const getChildrenLabels = (parent) => Object.keys(parent);
+  // Helper function to flatten the data and initialize state
+  const flattenTree = (nodes, parent = null) => {
+    let flatData = {};
+    nodes.forEach((node) => {
+      flatData[node.label] = {
+        checked: false,
+        parent,
+        children: node.children?.map((child) => child.label) || [],
+      };
+      if (node.children) {
+        flatData = { ...flatData, ...flattenTree(node.children, node.label) };
+      }
+    });
+    return flatData;
+  };
 
-    // State to track parent and child checkboxes' checked status for each parent
-    const [parentsChecked, setParentsChecked] = useState(
-        response.map(() => false)
-    );
-    const [childrenChecked, setChildrenChecked] = useState(
-        response.map((parent) => getChildrenLabels(parent.parent).map(() => false))
-    );
+  // Initialize the state with a flattened data structure
+  const [checkedState, setCheckedState] = useState(flattenTree(response));
 
-    // Handle parent checkbox change
-    const handleParentChange = (parentIndex) => {
-        const updatedParentsChecked = [...parentsChecked];
-        const checked = !updatedParentsChecked[parentIndex]; // Toggle the state of the parent checkbox
-        updatedParentsChecked[parentIndex] = checked;
-        setParentsChecked(updatedParentsChecked);
+  // Handle change for a node (toggle state)
+  const handleNodeChange = (node) => {
+    const newState = { ...checkedState };
 
-        // Update all children of this parent to match the parent checkbox's state
-        const updatedChildrenChecked = [...childrenChecked];
-        updatedChildrenChecked[parentIndex] = updatedChildrenChecked[parentIndex].map(() => checked);
-        setChildrenChecked(updatedChildrenChecked);
+    // Toggle current node
+    const isChecked = !newState[node.label].checked;
+    newState[node.label].checked = isChecked;
+
+    // Function to toggle all children recursively
+    const toggleChildren = (nodeLabel, checked) => {
+      const node = newState[nodeLabel];
+      node.checked = checked;
+      node.children.forEach((childLabel) =>
+        toggleChildren(childLabel, checked)
+      );
     };
 
-    // Handle individual child checkbox change
-    const handleChildChange = (parentIndex, childIndex) => {
-        const updatedChildrenChecked = [...childrenChecked];
-        updatedChildrenChecked[parentIndex][childIndex] = !updatedChildrenChecked[parentIndex][childIndex];
-        setChildrenChecked(updatedChildrenChecked);
+    // Toggle all children of the current node
+    toggleChildren(node.label, isChecked);
 
-        // Update the parent checkbox based on children
-        const allChecked = updatedChildrenChecked[parentIndex].every((checked) => checked);
-        const noneChecked = updatedChildrenChecked[parentIndex].every((checked) => !checked);
-        const updatedParentsChecked = [...parentsChecked];
-        if (allChecked) {
-            updatedParentsChecked[parentIndex] = true;
-        } else if (noneChecked) {
-            updatedParentsChecked[parentIndex] = false;
-        } else {
-            updatedParentsChecked[parentIndex] = false; // Optional: for indeterminate state handling
-        }
-        setParentsChecked(updatedParentsChecked);
+    // Function to update all parents recursively
+    const updateParents = (nodeLabel) => {
+      const node = newState[nodeLabel];
+      if (node.parent) {
+        const parent = newState[node.parent];
+        // Uncheck parent if any child is unchecked
+        parent.checked = parent.children.every(
+          (childLabel) => newState[childLabel].checked
+        );
+        updateParents(node.parent);
+      }
     };
 
-    return (
-        <div>
-            <h1>Parents and Children Checkboxes</h1>
-            {response.map((parentObj, parentIndex) => {
-                const childrenLabels = getChildrenLabels(parentObj.parent);
+    // Update parent nodes if the current node is unchecked
+    if (!isChecked) {
+      updateParents(node.label);
+    }
 
-                return (
-                    <div key={parentIndex} style={{ marginBottom: '20px' }}>
-                        <div className='parent_checkbox'>
-                            <input
-                                type="checkbox"
-                                checked={parentsChecked[parentIndex]}
-                                onChange={() => handleParentChange(parentIndex)}
-                            /> Parent {parentIndex + 1}
-                        </div>
-                        <div className='child_checkbox'>
-                            {childrenLabels.map((label, childIndex) => (
-                                <div key={childIndex}>
-                                    <input
-                                        type="checkbox"
-                                        checked={childrenChecked[parentIndex][childIndex]}
-                                        onChange={() => handleChildChange(parentIndex, childIndex)}
-                                    /> {parentObj.parent[label]} {/* Display child values */}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
+    setCheckedState(newState);
+  };
+
+  return (
+    <div>
+      <h1>Nested Checkboxes</h1>
+      <CheckboxTree
+        nodes={response}
+        onNodeChange={handleNodeChange}
+        checkedState={checkedState}
+      />
+    </div>
+  );
 };
 
 export default Checkbox;

@@ -1,41 +1,48 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-import Checkbox from './Checkbox'
+import { useState } from "react";
+import "./App.css";
+import Checkbox from "./Checkbox";
 function App() {
   const response = [
     {
-      parent: {
-        child1: "tree",
-        child2: "",
-        child3: "river",
-      },
-    },
-    {
-      parent: {
-        child1: "car",
-        child2: "bike",
-        child3: "",
-      },
-    },
-    {
-      parent: {
-        child1: "apple",
-        child2: "banana",
-        child3: "grape",
-      },
+      label: "Parent 1",
+      children: [
+        {
+          label: "parent 1 child",
+        },
+        {
+          label: "parent 1 child2",
+        },
+        {
+          label: "Parent 2",
+          children: [
+            {
+              label: "parent 2 child",
+            },
+            {
+              label: "parent 2 child2",
+            },
+            {
+              label: "Parent 3",
+              children: [
+                {
+                  label: "Child 1",
+                },
+                {
+                  label: "Child 2",
+                },
+              ],
+            },
+          ],
+        },
+      ],
     },
   ];
-  
-   
- 
+
   return (
     <>
-   
-       <Checkbox response={response} /> 
+      <Checkbox response={response} />
     </>
-  )
+  );
 }
 
-export default App
+export default App;
